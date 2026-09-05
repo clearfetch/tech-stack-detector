@@ -1,0 +1,1 @@
+{ "urls": ["stripe.com", "https://www.shopify.com", "bbc.co.uk", "wordpress.org", "github.com", "https://www.zalando.de", "notion.so", "reddit.com", "example.com", "this-domain-does-not-exist-12345.com"], "maxConcurrency": 10 }

@@ -1,0 +1,5 @@
+{
+    "urls": ["not a url", "http://", "javascript:alert(1)", "ftp://files.example.com", "mailto:hello@example.com", "localhost", "example.com", "example.com"],
+    "includeDns": false,
+    "timeoutSecs": 10
+}

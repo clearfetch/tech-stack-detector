@@ -1,0 +1,6 @@
+{
+    "urls": ["https://httpbin.org/status/500", "https://httpbin.org/delay/10", "this-domain-does-not-exist-12345.com", "https://expired.badssl.com/", "example.com"],
+    "includeDns": false,
+    "timeoutSecs": 5,
+    "maxConcurrency": 5
+}

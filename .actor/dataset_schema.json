@@ -1,0 +1,199 @@
+{
+    "actorSpecification": 1,
+    "fields": {
+        "type": "object",
+        "properties": {
+            "url": {
+                "type": "string",
+                "title": "Website",
+                "description": "The URL as supplied in the input."
+            },
+            "finalUrl": {
+                "type": "string",
+                "title": "Final URL",
+                "description": "URL after redirects, which is what was actually analyzed."
+            },
+            "ok": {
+                "type": "boolean",
+                "title": "Analyzed",
+                "description": "True when the website was analyzed and charged. False rows are failures and cost nothing."
+            },
+            "pageAnalyzed": {
+                "type": "boolean",
+                "title": "Page readable",
+                "description": "False when the site answered HTTP 400 or above but headers or DNS still yielded detections."
+            },
+            "statusCode": {
+                "type": [
+                    "integer",
+                    "null"
+                ],
+                "title": "HTTP status"
+            },
+            "title": {
+                "type": [
+                    "string",
+                    "null"
+                ],
+                "title": "Page title"
+            },
+            "technologies": {
+                "type": "array",
+                "title": "Technologies",
+                "description": "Technologies detected on the page itself.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "Technology name, for example WordPress."
+                        },
+                        "slug": {
+                            "type": "string"
+                        },
+                        "confidence": {
+                            "type": "integer",
+                            "description": "0-100. Below 100 means indirect evidence, such as a vendor URL inside an inline script."
+                        },
+                        "version": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "description": "Version where the fingerprint can read one."
+                        },
+                        "categories": {
+                            "type": "array",
+                            "description": "Categories such as CMS, Ecommerce, Analytics, CDN.",
+                            "items": {
+                                "type": "object"
+                            }
+                        },
+                        "website": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "evidence": {
+                            "type": "array",
+                            "description": "What matched: type (headers, cookies, scriptSrc, dom, dns, resourceUrl, implied), the key and the matched value.",
+                            "items": {
+                                "type": "object"
+                            }
+                        }
+                    }
+                }
+            },
+            "techNames": {
+                "type": "array",
+                "title": "Technology names",
+                "description": "Flat list of the names in technologies, convenient for spreadsheets.",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "count": {
+                "type": "integer",
+                "title": "Technology count"
+            },
+            "categorized": {
+                "type": "object",
+                "title": "By category",
+                "description": "Technology names grouped by category name."
+            },
+            "dnsTechnologies": {
+                "type": "array",
+                "title": "DNS technologies",
+                "description": "Services seen only in DNS records: mail provider, DNS host, domain-verified SaaS. Kept apart so the main list describes the site itself.",
+                "items": {
+                    "type": "object"
+                }
+            },
+            "dnsTechNames": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "server": {
+                "type": "object",
+                "title": "Server",
+                "description": "Server and X-Powered-By headers and the generator meta tag."
+            },
+            "dns": {
+                "type": "object",
+                "title": "DNS records",
+                "description": "TXT, MX, NS and CNAME records."
+            },
+            "scanTimeMs": {
+                "type": "integer"
+            },
+            "scannedAt": {
+                "type": "string",
+                "description": "ISO timestamp."
+            },
+            "error": {
+                "type": "string",
+                "title": "Error",
+                "description": "Present only on failed rows."
+            },
+            "errorCode": {
+                "type": [
+                    "string",
+                    "null"
+                ],
+                "description": "Network error code such as ENOTFOUND."
+            }
+        }
+    },
+    "views": {
+        "overview": {
+            "title": "Overview",
+            "transformation": {
+                "fields": [
+                    "url",
+                    "ok",
+                    "statusCode",
+                    "count",
+                    "techNames",
+                    "server.server",
+                    "scanTimeMs",
+                    "error"
+                ]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "url": {
+                        "label": "Website",
+                        "format": "link"
+                    },
+                    "ok": {
+                        "label": "Analyzed",
+                        "format": "boolean"
+                    },
+                    "statusCode": {
+                        "label": "HTTP"
+                    },
+                    "count": {
+                        "label": "# technologies"
+                    },
+                    "techNames": {
+                        "label": "Technologies",
+                        "format": "array"
+                    },
+                    "server.server": {
+                        "label": "Server"
+                    },
+                    "scanTimeMs": {
+                        "label": "Scan ms"
+                    },
+                    "error": {
+                        "label": "Error"
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,7 @@
+node_modules/
+storage/
+package-lock.json
+data/technologies/*.json
+data/categories.json
+data/UPDATED
+.DS_Store

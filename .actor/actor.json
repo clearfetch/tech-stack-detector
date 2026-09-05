@@ -1,0 +1,17 @@
+{
+    "actorSpecification": 1,
+    "name": "tech-stack-detector",
+    "title": "Tech Stack Detector - Wappalyzer & BuiltWith Alternative",
+    "description": "Detect the technologies behind any website: CMS, ecommerce platform, JavaScript frameworks, analytics, ad tech, CDN, hosting, email provider. 7,600+ fingerprints, versions and confidence scores. Clean JSON per website.",
+    "version": "1.0",
+    "buildTag": "latest",
+    "minMemoryMbytes": 256,
+    "maxMemoryMbytes": 2048,
+    "input": "./input_schema.json",
+    "output": "./output_schema.json",
+    "dockerfile": "../Dockerfile",
+    "readme": "../README.md",
+    "storages": {
+        "dataset": "./dataset_schema.json"
+    }
+}

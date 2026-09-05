@@ -1,0 +1,19 @@
+{
+    "name": "tech-stack-detector",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "Detect the technologies behind any website: CMS, frameworks, analytics, CDN, ecommerce, hosting, email provider.",
+    "engines": {
+        "node": ">=20.0.0"
+    },
+    "dependencies": {
+        "apify": "^3.7.0",
+        "cheerio": "^1.0.0",
+        "got-scraping": "^4.0.0",
+        "tldts": "^6.1.0"
+    },
+    "scripts": {
+        "start": "node ./src/main.js"
+    },
+    "license": "MIT"
+}

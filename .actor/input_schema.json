@@ -1,0 +1,57 @@
+{
+    "title": "Tech Stack Detector input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "urls": {
+            "title": "Websites",
+            "type": "array",
+            "description": "Domains or URLs to analyze, one per line. Bare domains work (the https:// scheme is added automatically). Each successfully analyzed website is one paid result.",
+            "editor": "stringList",
+            "prefill": ["stripe.com", "https://www.shopify.com", "bbc.co.uk"]
+        },
+        "includeDns": {
+            "title": "Include DNS checks",
+            "type": "boolean",
+            "description": "Also inspect TXT, MX, NS and CNAME records to detect email providers, DNS hosting, domain verification services and CDNs.",
+            "default": true
+        },
+        "includeEvidence": {
+            "title": "Include evidence",
+            "type": "boolean",
+            "description": "Attach the matched header, script, cookie or HTML snippet for every detected technology so you can verify each detection.",
+            "default": true
+        },
+        "minConfidence": {
+            "title": "Minimum confidence",
+            "type": "integer",
+            "description": "Drop technologies detected with confidence below this value (0-100). Implied technologies typically score 50-100.",
+            "default": 0,
+            "minimum": 0,
+            "maximum": 100
+        },
+        "maxConcurrency": {
+            "title": "Concurrency",
+            "type": "integer",
+            "description": "How many websites to analyze in parallel.",
+            "default": 10,
+            "minimum": 1,
+            "maximum": 50
+        },
+        "timeoutSecs": {
+            "title": "Timeout per website (seconds)",
+            "type": "integer",
+            "description": "Give up on a website after this many seconds.",
+            "default": 20,
+            "minimum": 5,
+            "maximum": 60
+        },
+        "proxyConfiguration": {
+            "title": "Proxy",
+            "type": "object",
+            "description": "Optional. Use Apify Proxy or your own proxies for websites that block datacenter traffic. Most websites do not need this.",
+            "editor": "proxy",
+            "default": { "useApifyProxy": false }
+        }
+    }
+}

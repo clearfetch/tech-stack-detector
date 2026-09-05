@@ -1,0 +1,13 @@
+{
+    "actorOutputSchemaVersion": 1,
+    "title": "Tech Stack Detector output",
+    "description": "One dataset item per website, holding the technologies detected on it, the evidence behind each detection, and the DNS-level findings.",
+    "properties": {
+        "results": {
+            "type": "string",
+            "title": "Analyzed websites",
+            "description": "One row per website: detected technologies with category, version and confidence, the header, script, cookie or DNS record that triggered each detection, a category breakdown, server headers and DNS records. Websites that could not be reached appear with ok=false and an error, and are not charged.",
+            "template": "{{links.apiDefaultDatasetUrl}}/items"
+        }
+    }
+}

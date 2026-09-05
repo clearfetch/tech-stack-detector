@@ -1,0 +1,17 @@
+{
+    "urls": [
+        "stripe.com",
+        "https://www.shopify.com",
+        "bbc.co.uk",
+        "wordpress.org",
+        "https://www.allbirds.com",
+        "https://www.gymshark.com",
+        "techcrunch.com",
+        "variety.com",
+        "cloudflare.com",
+        "hubspot.com"
+    ],
+    "includeDns": true,
+    "maxConcurrency": 10,
+    "timeoutSecs": 25
+}

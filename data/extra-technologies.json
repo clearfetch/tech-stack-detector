@@ -1,0 +1,42 @@
+{
+    "Google Tag Manager": {
+        "html": [
+            "data-gtm-id=[\"']GTM-[A-Z0-9]{4,}\\;confidence:50",
+            "\\bGTM-[A-Z0-9]{4,}\\b\\;confidence:50"
+        ],
+        "scripts": [
+            "google_tag_manager",
+            "google_tags_first_party",
+            "googletagmanager\\.com/gtm\\.js"
+        ]
+    },
+    "Google Analytics": {
+        "html": [
+            "\\bG-[A-Z0-9]{9,}\\b\\;confidence:50\\;version:GA4"
+        ],
+        "scripts": [
+            "gtag\\(\\s*[\"']config[\"']\\s*,\\s*[\"']G-\\;version:GA4",
+            "GoogleAnalyticsObject",
+            "googletagmanager\\.com/gtag/js"
+        ]
+    },
+    "Shopify": {
+        "scripts": [
+            "ShopifyAnalytics",
+            "Shopify\\.theme",
+            "shopifyAccessUrl",
+            "cdn\\.shopify\\.com\\;confidence:50"
+        ]
+    },
+    "WordPress": {
+        "scripts": [
+            "/wp-content/\\;confidence:50",
+            "/wp-json/\\;confidence:50"
+        ]
+    },
+    "Cloudflare": {
+        "scripts": [
+            "/cdn-cgi/\\;confidence:50"
+        ]
+    }
+}
