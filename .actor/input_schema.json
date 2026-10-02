@@ -6,9 +6,19 @@
         "urls": {
             "title": "Websites",
             "type": "array",
-            "description": "Domains or URLs to analyze, one per line. Bare domains work (the https:// scheme is added automatically). Each successfully analyzed website is one paid result.",
+            "description": "Domains or URLs to analyze, one per line. Bare domains work (the https:// scheme is added automatically). Each successfully analyzed website is one paid result. Paste thousands at once, or link a file below.",
             "editor": "stringList",
-            "prefill": ["stripe.com", "https://www.shopify.com", "bbc.co.uk"]
+            "prefill": [
+                "stripe.com",
+                "https://www.shopify.com",
+                "bbc.co.uk"
+            ]
+        },
+        "urlListUrl": {
+            "title": "Or: link to a list of websites",
+            "type": "string",
+            "editor": "textfield",
+            "description": "A link to a text or CSV file with one domain or URL per line, for lists too long to paste: a Google Sheets \"Publish to the web\" CSV link works. The first cell on each line that looks like a domain is used, so header rows and extra columns are fine. Read in addition to the list above."
         },
         "includeDns": {
             "title": "Include DNS checks",
@@ -33,8 +43,7 @@
         "maxConcurrency": {
             "title": "Concurrency",
             "type": "integer",
-            "description": "How many websites to analyze in parallel.",
-            "default": 10,
+            "description": "How many websites to analyze in parallel. Leave empty to scale with the run's memory, which also sets its CPU: 40 at the default 4 GB, 20 at 2 GB.",
             "minimum": 1,
             "maximum": 50
         },
@@ -51,7 +60,9 @@
             "type": "object",
             "description": "Optional. Use Apify Proxy or your own proxies for websites that block datacenter traffic. Most websites do not need this.",
             "editor": "proxy",
-            "default": { "useApifyProxy": false }
+            "default": {
+                "useApifyProxy": false
+            }
         }
     }
 }

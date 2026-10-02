@@ -34,6 +34,126 @@ function parsePattern(pattern) {
     return { regex: re, confidence: attrs.confidence, version: attrs.version, source: regex };
 }
 const parsePatterns = (v) => toArray(v).map(parsePattern).filter((p) => p.regex);
+
+/**
+ * Literal text a regex cannot match without, lowercased: one string per top-level alternative, or null when an
+ * alternative has none of at least three characters. Patterns run against a whole page (html, inline scripts) are
+ * skipped when none of their strings occurs in it: those regexes were three quarters of a scan's CPU, and most
+ * cannot match a given page. Only text outside every group counts, and a character a quantifier makes optional
+ * ends a run, so a string reported here is in every match.
+ */
+export function requiredLiterals(source) {
+    const alternatives = [];
+    let depth = 0;
+    let inClass = false;
+    let start = 0;
+    for (let i = 0; i < source.length; i += 1) {
+        const c = source[i];
+        if (c === '\\') {
+            i += 1;
+        } else if (inClass) {
+            if (c === ']') inClass = false;
+        } else if (c === '[') {
+            inClass = true;
+        } else if (c === '(') {
+            depth += 1;
+        } else if (c === ')') {
+            depth -= 1;
+        } else if (c === '|' && depth === 0) {
+            alternatives.push(source.slice(start, i));
+            start = i + 1;
+        }
+    }
+    alternatives.push(source.slice(start));
+    const out = [];
+    for (const alternative of alternatives) {
+        const literal = longestLiteral(alternative);
+        if (literal === null || literal.length < 3) return null;
+        out.push(literal.toLowerCase());
+    }
+    return out;
+}
+
+function longestLiteral(source) {
+    let best = '';
+    let run = '';
+    const endRun = () => {
+        if (run.length > best.length) best = run;
+        run = '';
+    };
+    let i = 0;
+    while (i < source.length) {
+        const c = source[i];
+        let literal = null;
+        let next = i + 1;
+        if (c === '\\') {
+            const e = source[i + 1];
+            if (e === undefined) return null;
+            if (/[^A-Za-z0-9]/.test(e)) literal = e;
+            else if (e === 'x') next = i + 4;
+            else if (e === 'u') next = source[i + 2] === '{' ? source.indexOf('}', i) + 1 : i + 6;
+            else if (e === 'c') next = i + 3;
+            else if (e === 'k') next = source.indexOf('>', i) + 1;
+            else if (/[0-9]/.test(e)) for (next = i + 1; /[0-9]/.test(source[next] ?? ''); next += 1);
+            if (next <= i) return null;
+            if (literal !== null || !/[xuck0-9]/.test(e)) next = Math.max(next, i + 2);
+        } else if (c === '[') {
+            let j = i + 1;
+            for (; j < source.length && source[j] !== ']'; j += 1) if (source[j] === '\\') j += 1;
+            if (j >= source.length) return null;
+            next = j + 1;
+        } else if (c === '(') {
+            let depth = 0;
+            let j = i;
+            for (; j < source.length; j += 1) {
+                const x = source[j];
+                if (x === '\\') {
+                    j += 1;
+                } else if (x === '[') {
+                    for (j += 1; j < source.length && source[j] !== ']'; j += 1) if (source[j] === '\\') j += 1;
+                } else if (x === '(') {
+                    depth += 1;
+                } else if (x === ')' && (depth -= 1) === 0) {
+                    break;
+                }
+            }
+            if (j >= source.length) return null;
+            next = j + 1;
+        } else if ('*+?{}'.includes(c)) {
+            return null;
+        } else if (!'.^$|)'.includes(c)) {
+            literal = c;
+        }
+        let optional = false;
+        let repeated = false;
+        const q = source[next];
+        if (q === '*' || q === '?') {
+            optional = true;
+            next += 1;
+        } else if (q === '+') {
+            repeated = true;
+            next += 1;
+        } else if (q === '{') {
+            const m = /^\{(\d*)(,?)(\d*)\}/.exec(source.slice(next));
+            if (m) {
+                const min = Number(m[1] || 0);
+                optional = min === 0;
+                repeated = !optional && !(m[2] === '' && min === 1);
+                next += m[0].length;
+            }
+        }
+        if (source[next] === '?' && (optional || repeated || q === '{')) next += 1;
+        if (literal === null || optional) {
+            endRun();
+        } else {
+            run += literal;
+            if (repeated) endRun();
+        }
+        i = next;
+    }
+    endRun();
+    return best;
+}
 const parsePatternMap = (obj) => {
     const out = {};
     for (const [k, v] of Object.entries(obj || {})) out[k.toLowerCase()] = parsePatterns(v);
@@ -44,14 +164,97 @@ function compileDom(dom) {
     // string | string[] | { selector: { exists, text, attributes, properties } }
     if (!dom) return [];
     if (typeof dom === 'string' || Array.isArray(dom)) {
-        return toArray(dom).map((selector) => ({ selector, exists: [parsePattern('')], text: [], attributes: {} }));
+        return toArray(dom).map((selector) => ({ selector, tokens: selectorTokens(selector), exists: [parsePattern('')], text: [], attributes: {} }));
     }
     return Object.entries(dom).map(([selector, spec]) => ({
         selector,
+        tokens: selectorTokens(selector),
         exists: spec.exists !== undefined ? parsePatterns(spec.exists === '' ? '' : spec.exists) : [],
         text: parsePatterns(spec.text),
         attributes: parsePatternMap(spec.attributes),
     }));
+}
+
+/**
+ * Text a selector cannot match without: the ids, classes, attribute names and attribute values it names, one list
+ * per comma-separated alternative, lowercased. Running every fingerprint's selectors over every page was most of a
+ * scan's CPU on Apify's half-core runs, and on a given page almost none of them can match. Anything this cannot
+ * read safely returns null and is always evaluated: escapes, functional pseudo-classes other than :not (whose
+ * contents name things that must be absent, so they add no requirement), and values HTML may write as entities.
+ */
+export function selectorTokens(selector) {
+    const source = String(selector ?? '');
+    if (source.includes('\\')) return null;
+    const alternatives = splitTopLevel(source);
+    if (!alternatives) return null;
+    const out = [];
+    for (const alternative of alternatives) {
+        let rest = removeNegations(alternative);
+        if (rest === null || /:[a-z-]+\(/i.test(rest)) return null;
+        const tokens = [];
+        rest = rest.replace(/\[\s*([^\s~|^$*=\]]+)\s*(?:([~|^$*]?=)\s*(?:"([^"]*)"|'([^']*)'|([^\]\s]*)))?\s*(?:[iIsS]\s*)?\]/g, (_, name, op, dq, sq, bare) => {
+            tokens.push(name);
+            const value = dq ?? sq ?? bare;
+            if (op && value && !/[&<>"']/.test(value)) tokens.push(value);
+            return ' ';
+        });
+        if (/[[\]"']/.test(rest)) return null;
+        for (const m of rest.matchAll(/[#.]([A-Za-z_-][A-Za-z0-9_-]*)/g)) tokens.push(m[1]);
+        out.push(tokens.map((t) => t.toLowerCase()));
+    }
+    return out;
+}
+
+/** Splits a selector list on its top-level commas; null when quotes or brackets do not balance. */
+function splitTopLevel(source) {
+    const parts = [];
+    let depth = 0;
+    let quote = null;
+    let start = 0;
+    for (let i = 0; i < source.length; i += 1) {
+        const c = source[i];
+        if (quote) {
+            if (c === quote) quote = null;
+        } else if (c === '"' || c === "'") quote = c;
+        else if (c === '(' || c === '[') depth += 1;
+        else if (c === ')' || c === ']') depth -= 1;
+        else if (c === ',' && depth === 0) {
+            parts.push(source.slice(start, i));
+            start = i + 1;
+        }
+        if (depth < 0) return null;
+    }
+    if (quote || depth !== 0) return null;
+    parts.push(source.slice(start));
+    return parts.map((p) => p.trim()).filter(Boolean);
+}
+
+/** The selector without its :not(...) groups; null when a group never closes. */
+function removeNegations(source) {
+    let out = '';
+    let i = 0;
+    while (i < source.length) {
+        if (source.slice(i, i + 5).toLowerCase() !== ':not(') {
+            out += source[i];
+            i += 1;
+            continue;
+        }
+        let depth = 0;
+        let quote = null;
+        let j = i + 4;
+        for (; j < source.length; j += 1) {
+            const c = source[j];
+            if (quote) {
+                if (c === quote) quote = null;
+            } else if (c === '"' || c === "'") quote = c;
+            else if (c === '(') depth += 1;
+            else if (c === ')' && --depth === 0) break;
+        }
+        if (j >= source.length) return null;
+        out += ' ';
+        i = j + 1;
+    }
+    return out;
 }
 
 function compileTech(name, t) {
@@ -69,11 +272,11 @@ function compileTech(name, t) {
         requires: toArray(t.requires),
         requiresCategory: toArray(t.requiresCategory),
         url: parsePatterns(t.url),
-        html: parsePatterns(t.html),
+        html: withLiterals(parsePatterns(t.html)),
         text: parsePatterns(t.text),
         css: parsePatterns(t.css),
         scriptSrc: parsePatterns(t.scriptSrc),
-        scripts: parsePatterns(t.scripts),
+        scripts: withLiterals(parsePatterns(t.scripts)),
         meta: parsePatternMap(t.meta),
         headers: parsePatternMap(t.headers),
         cookies: parsePatternMap(t.cookies),
@@ -81,6 +284,11 @@ function compileTech(name, t) {
         dom: compileDom(t.dom),
     };
 }
+/** Inline scripts are part of the raw HTML, so a literal missing from the page is missing from every script too. */
+function withLiterals(patterns) {
+    return patterns.map((p) => ({ ...p, literals: requiredLiterals(p.regex.source) }));
+}
+
 function parseImply(v) {
     const [name, ...tags] = String(v).split(TAG_SEPARATOR);
     let confidence = 100;
@@ -97,7 +305,66 @@ export function loadDatabase() {
     mergeOverlay(raw, path.join(DATA_DIR, 'extra-technologies.json'));
     const techs = Object.entries(raw).map(([name, t]) => compileTech(name, t));
     const byName = new Map(techs.map((t) => [t.name, t]));
-    return { categories, techs, byName };
+    // Every selector token gets an id, and one pass over a page finds them all; one includes() per token rescanned
+    // the whole page each time and cost more than the selectors it skipped.
+    const tokenIds = new Map();
+    const idOf = (token) => {
+        if (!tokenIds.has(token)) tokenIds.set(token, tokenIds.size);
+        return tokenIds.get(token);
+    };
+    for (const t of techs) {
+        for (const d of t.dom) if (d.tokens) d.tokenIds = d.tokens.map((alternative) => alternative.map(idOf));
+        for (const p of [...t.html, ...t.scripts]) p.literalIds = p.literals ? p.literals.map(idOf) : null;
+    }
+    return { categories, techs, byName, findTokens: buildMatcher([...tokenIds.keys()]) };
+}
+
+/**
+ * Aho-Corasick over a fixed list of strings: one pass over a text reports which of them occur in it, whatever
+ * their number. Returns a function from text to a Uint8Array marking each string found, by index.
+ */
+export function buildMatcher(words) {
+    const next = [new Map()];
+    const fail = [0];
+    const hits = [[]];
+    words.forEach((word, id) => {
+        let state = 0;
+        for (const ch of word) {
+            let to = next[state].get(ch);
+            if (to === undefined) {
+                to = next.length;
+                next.push(new Map());
+                fail.push(0);
+                hits.push([]);
+                next[state].set(ch, to);
+            }
+            state = to;
+        }
+        hits[state].push(id);
+    });
+    const queue = [...next[0].values()];
+    for (let head = 0; head < queue.length; head += 1) {
+        const from = queue[head];
+        for (const [ch, to] of next[from]) {
+            queue.push(to);
+            let f = fail[from];
+            while (f && !next[f].has(ch)) f = fail[f];
+            const target = from === 0 ? 0 : (next[f].get(ch) ?? 0);
+            fail[to] = target === to ? 0 : target;
+            if (hits[fail[to]].length) hits[to] = hits[to].concat(hits[fail[to]]);
+        }
+    }
+    return (text) => {
+        const found = new Uint8Array(words.length);
+        let state = 0;
+        for (const ch of text) {
+            while (state && !next[state].has(ch)) state = fail[state];
+            state = next[state].get(ch) ?? 0;
+            const h = hits[state];
+            for (let i = 0; i < h.length; i += 1) found[h[i]] = 1;
+        }
+        return found;
+    };
 }
 
 /**
@@ -161,9 +428,10 @@ function resolveVersion({ version, regex }, value) {
     return resolved.trim();
 }
 
-function testPatterns(patterns, value, type, out, tech, keyName, maxConfidence = 100) {
+function testPatterns(patterns, value, type, out, tech, keyName, maxConfidence = 100, present = null) {
     if (!value) return;
     for (const p of patterns) {
+        if (present && p.literalIds && !p.literalIds.some((id) => present[id])) continue;
         if (p.regex.test(value)) {
             out.push({
                 tech,
@@ -191,9 +459,10 @@ export function analyze(db, page) {
     const scripts = page.scripts || [];
     const css = page.css || [];
     const resourceUrls = page.resourceUrls || [];
+    const present = db.findTokens(String(page.html ?? '').toLowerCase());
     for (const tech of db.techs) {
         testPatterns(tech.url, page.url, 'url', detections, tech);
-        testPatterns(tech.html, page.html, 'html', detections, tech);
+        testPatterns(tech.html, page.html, 'html', detections, tech, undefined, 100, present);
         testPatterns(tech.text, page.text, 'text', detections, tech);
         for (const s of scriptSrc) testPatterns(tech.scriptSrc, s, 'scriptSrc', detections, tech);
         // A vendor URL that appears in inline JavaScript, a preload hint or an image reference is good evidence
@@ -202,7 +471,7 @@ export function analyze(db, page) {
         if (tech.scriptSrc.length) {
             for (const s of resourceUrls) testPatterns(tech.scriptSrc, s, 'resourceUrl', detections, tech, undefined, RESOURCE_URL_MAX_CONFIDENCE);
         }
-        if (tech.scripts.length) for (const s of scripts) testPatterns(tech.scripts, s, 'scripts', detections, tech);
+        if (tech.scripts.length) for (const s of scripts) testPatterns(tech.scripts, s, 'scripts', detections, tech, undefined, 100, present);
         if (tech.css.length) for (const s of css) testPatterns(tech.css, s, 'css', detections, tech);
         for (const [k, pats] of Object.entries(tech.meta)) for (const v of page.meta?.[k] || []) testPatterns(pats, v, 'meta', detections, tech, k);
         for (const [k, pats] of Object.entries(tech.headers)) for (const v of page.headers?.[k] || []) testPatterns(pats, v, 'headers', detections, tech, k);
@@ -218,13 +487,14 @@ export function analyze(db, page) {
             }
         }
         for (const [k, pats] of Object.entries(tech.dns)) for (const v of page.dns?.[k.toUpperCase()] || []) testPatterns(pats, v, 'dns', detections, tech, k);
-        if (tech.dom.length && page.$) analyzeDom(tech, page.$, detections);
+        if (tech.dom.length && page.$) analyzeDom(tech, page.$, detections, present);
     }
     return resolve(db, detections);
 }
 
-function analyzeDom(tech, $, detections) {
+function analyzeDom(tech, $, detections, present) {
     for (const d of tech.dom) {
+        if (d.tokenIds && !d.tokenIds.some((alternative) => alternative.every((id) => present[id]))) continue;
         let nodes;
         try {
             nodes = $(d.selector);

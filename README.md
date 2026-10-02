@@ -2,7 +2,7 @@
 
 **Run it on Apify: [apify.com/clearfetch/tech-stack-detector](https://apify.com/clearfetch/tech-stack-detector)**
 
-Find out what any website is built with. Give this Actor a list of domains and it returns the technologies behind each one: CMS, ecommerce platform, JavaScript frameworks, analytics and ad tags, CDN, hosting, payment processors, marketing automation, plus the email provider and domain-verification services visible in DNS. It is a drop-in alternative to the Wappalyzer and BuiltWith APIs at a fraction of the price: **$0.02 per website**, failed websites are free.
+Find out what any website is built with. Give this Actor a list of domains and it returns the technologies behind each one: CMS, ecommerce platform, JavaScript frameworks, analytics and ad tags, CDN, hosting, payment processors, marketing automation, plus the email provider and domain-verification services visible in DNS. It is a drop-in alternative to the Wappalyzer and BuiltWith APIs at a fraction of the price: **$0.05 per website** ($0.02 until 16 October 2026), failed websites are free.
 
 ## What data you get
 
@@ -23,10 +23,11 @@ Find out what any website is built with. Give this Actor a list of domains and i
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `urls` | array | — | Domains or URLs to analyze. Also accepts `url` (single string, comma or newline separated) and `startUrls` for compatibility with other Actors and integrations. |
+| `urlListUrl` | string | — | A link to a text or CSV file with one domain or URL per line, for lists too long to paste (a Google Sheets "Publish to the web" CSV link works). Read in addition to `urls`. |
 | `includeDns` | boolean | true | Look up TXT, MX, NS and CNAME records to detect mail providers, DNS hosts and domain-verified services. |
 | `includeEvidence` | boolean | true | Attach the matched header/script/cookie/DNS snippet to every detection. |
 | `minConfidence` | integer | 0 | Drop detections below this confidence (0-100). |
-| `maxConcurrency` | integer | 10 | Websites analyzed in parallel (1-50). |
+| `maxConcurrency` | integer | by memory | Websites analyzed in parallel (1-50). Left empty, it follows the run's memory: 40 at the default 4 GB, 20 at 2 GB. |
 | `timeoutSecs` | integer | 20 | Per-website HTTP timeout (5-60). |
 | `proxyConfiguration` | object | off | Optional Apify Proxy or custom proxies for sites that block datacenter traffic. Not needed for most sites. |
 
@@ -211,9 +212,11 @@ Websites that cannot be reached produce an error item and are not charged:
 
 ## Pricing
 
-- **$0.02 per website analyzed.** 100 websites = $2, 1,000 websites = $20. Unreachable websites are free.
+- **$0.05 per website analyzed** from 17 October 2026, $0.02 until then. 100 websites = $5, 1,000 websites = $50. Unreachable websites are free.
 - No subscription, no API key, no minimum. Runs on the Apify free plan.
 - For comparison: BuiltWith's API plans cost hundreds of dollars per month, and the next Wappalyzer-style Actor on Apify Store charges $0.10 per site.
+
+Paid Apify plans pay less: 10% off on Bronze, 20% on Silver and 30% on Gold and higher tiers.
 
 ## Use cases
 
@@ -260,9 +263,20 @@ Works with the Apify integrations for n8n, Make, Zapier, Google Sheets, webhooks
 
 **How fresh is the fingerprint database?** It comes from the open-source webappanalyzer project (the successor of Wappalyzer's public fingerprints) and is refreshed monthly.
 
+**Can it handle a list of 10,000 websites or more?** Yes. Paste the list or link a text or CSV file in `urlListUrl`. If a list is too long for the run's time limit, the run stops a minute before it, ends as succeeded, and saves the websites it did not reach in the `UNPROCESSED` record of the run's key-value store, ready to pass as `urls` to the next run. The same happens when a run reaches the maximum cost you set for it.
+
 **Can I get only certain categories?** Yes, filter the `technologies` array by `categories[].name` (for example "CMS", "Ecommerce", "Analytics", "JavaScript frameworks", "CDN", "Hosting", "Payment processors").
+
+## More tools from clearfetch
+
+- [Website Contact Extractor](https://apify.com/clearfetch/website-contact-extractor): emails, phone numbers and social profiles from company websites
+- [Document Text Extractor](https://apify.com/clearfetch/document-text-extractor): PDF, DOCX and HTML to clean text and markdown
+- [Website Sitemap Extractor](https://apify.com/clearfetch/website-sitemap-extractor): every URL of a website from its sitemaps, from just the domain
+- [Broken Link Checker](https://apify.com/clearfetch/broken-link-checker): 404s, redirect chains and soft 404s in bulk
+- [ATS Jobs Scraper](https://apify.com/clearfetch/ats-jobs-scraper): every open job from company careers pages on Greenhouse, Lever, Ashby, Workday and more
 
 ## Changelog
 
+- **Pricing** (2026-10-17) — $0.05 per website analyzed instead of $0.02, announced on 2026-10-02; paid-plan discounts unchanged.
+- **1.1.0** (2026-10-02) — built for big lists: `urlListUrl` reads domains from a linked text or CSV file; a run stops cleanly before its time or cost limit and saves the websites it did not reach as `UNPROCESSED`; analysis is 5-6x faster with identical results (checked on 452 homepages, 4,192 detections); only the first megabyte of a page, the part analyzed, is downloaded; concurrency follows the run's memory.
 - **1.0.0** (2026-09) — initial release: 7,613 fingerprints, DNS detection, evidence and confidence per technology, pay per website. Detects technologies that are injected at runtime (tag managers, headless storefronts) from vendor URLs found in inline scripts and resource hints, and extracts version numbers where the fingerprint allows.
-
