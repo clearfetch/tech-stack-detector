@@ -1,7 +1,5 @@
 # Tech Stack Detector - Wappalyzer & BuiltWith Alternative
 
-**Run it on Apify: [apify.com/clearfetch/tech-stack-detector](https://apify.com/clearfetch/tech-stack-detector)**
-
 Find out what any website is built with. Give this Actor a list of domains and it returns the technologies behind each one: CMS, ecommerce platform, JavaScript frameworks, analytics and ad tags, CDN, hosting, payment processors, marketing automation, plus the email provider and domain-verification services visible in DNS. It is a drop-in alternative to the Wappalyzer and BuiltWith APIs at a fraction of the price: **$0.05 per website** ($0.02 until 16 October 2026), failed websites are free.
 
 ## What data you get
@@ -217,6 +215,8 @@ Websites that cannot be reached produce an error item and are not charged:
 - For comparison: BuiltWith's API plans cost hundreds of dollars per month, and the next Wappalyzer-style Actor on Apify Store charges $0.10 per site.
 
 Paid Apify plans pay less: 10% off on Bronze, 20% on Silver and 30% on Gold and higher tiers.
+
+Apify also charges a run-start fee of $0.00005 per started GB of allocated memory (minimum one event), including runs that produce no chargeable results.
 
 ## Use cases
 
